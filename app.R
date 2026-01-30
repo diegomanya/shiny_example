@@ -1,4 +1,5 @@
 library(shiny)
+library(ggplot2)
 
 ui <- fluidPage(
   selectInput(
@@ -22,36 +23,41 @@ ui <- fluidPage(
 
   plotOutput("main_plot", height = "300px"),
 
-  # Display this only if the density is shown
-  conditionalPanel(condition = "input.density == true",
+  conditionalPanel(
+    condition = "input.density == true",
     sliderInput(
       "bw_adjust",
       label = "Bandwidth adjustment:",
-      min = 0.2, max = 2, value = 1, step = 0.2)
+      min = 0.2, max = 2, value = 1, step = 0.2
+    )
   )
 )
 
 server <- function(input, output) {
-
   output$main_plot <- renderPlot({
-    hist(
-      faithful$eruptions,
-      probability = TRUE,
-      breaks = as.numeric(input$n_breaks),
-      xlab = "Duration (minutes)",
-      main = "Geyser eruption duration"
-    )
+    p <- ggplot(faithful, aes(x = eruptions)) +
+      geom_histogram(
+        aes(y = after_stat(density)),
+        bins = as.numeric(input$n_breaks),
+        fill = "grey",
+        color = "white"
+      ) +
+      labs(
+        x = "Duration (minutes)",
+        title = "Geyser eruption duration"
+      ) +
+      theme_minimal()
 
     if (input$individual_obs) {
-      rug(faithful$eruptions)
+      p <- p + geom_rug()
     }
 
     if (input$density) {
-      dens <- density(faithful$eruptions, adjust = input$bw_adjust)
-      lines(dens, col = "blue")
+      p <- p + geom_density(adjust = input$bw_adjust, color = "blue", size = 1)
     }
+
+    p
   })
 }
-
 
 shinyApp(ui, server)
